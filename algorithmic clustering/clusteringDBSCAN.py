@@ -208,11 +208,6 @@ if __name__ == "__main__":
         print(f"Cluster {cluster_id}: {stat['num_potholes']} potholes, "
               f"{stat['total_km']}km, {stat['total_time_mins']}mins")
     
-    # Step 3: Generate work orders HTML
-    html_file = optimizer.generate_work_orders_html('work_orders.html')
-    print(f"\nWork orders saved to {html_file}")
-    
     # Step 4: Visualize with polygon toggle
-    map = optimizer.visualize_routes(show_polygons=True)
     map.save('pothole_repair_routes.html')
     print("\nRoute visualization saved to pothole_repair_routes.html")
