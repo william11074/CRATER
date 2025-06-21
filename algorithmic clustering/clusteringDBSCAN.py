@@ -43,55 +43,6 @@ class PotholeRepairOptimizer:
         
         return self.df
     
-    def haversine_distance(self, point1, point2):
-        """Calculate haversine distance between two points in km"""
-        lat1, lon1 = np.radians(point1)
-        lat2, lon2 = np.radians(point2)
-        dlat = lat2 - lat1
-        dlon = lon2 - lon1
-        a = np.sin(dlat/2)**2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon/2)**2
-        return 6371 * 2 * np.arcsin(np.sqrt(a))
-    
-    def optimize_routes(self, speed_kmh=30, repair_time_mins=15):
-        """Optimize repair routes for each cluster using greedy TSP approach"""
-        for cluster_id in self.df['cluster'].unique():
-            if cluster_id == -1:  # Skip noise points
-                continue
-                
-            cluster_points = self.df[self.df['cluster'] == cluster_id]
-            coords = cluster_points[['latitude', 'longitude']].values
-            
-            # Create distance matrix
-            dist_matrix = cdist(coords, coords, lambda u, v: self.haversine_distance(u, v))
-            
-            # Solve TSP with greedy approach
-            route = [0]  # Start with first point
-            unvisited = set(range(1, len(coords)))
-            
-            while unvisited:
-                last = route[-1]
-                next_point = min(unvisited, key=lambda x: dist_matrix[last][x])
-                route.append(next_point)
-                unvisited.remove(next_point)
-            
-            # Store ordered route
-            self.cluster_routes[cluster_id] = cluster_points.iloc[route].copy()
-            self.cluster_routes[cluster_id]['route_order'] = range(len(route))
-            
-            # Calculate route statistics
-            total_distance = sum(dist_matrix[route[i]][route[i+1]] for i in range(len(route)-1))
-            total_time = (total_distance / speed_kmh * 60) + (len(route) * repair_time_mins)
-            
-            self.route_stats[cluster_id] = {
-                'num_potholes': len(route),
-                'total_km': round(total_distance, 2),
-                'total_time_mins': round(total_time),
-                'speed_kmh': speed_kmh,
-                'repair_time_mins': repair_time_mins
-            }
-            
-        return self.cluster_routes, self.route_stats
-    
     def visualize_routes(self, show_polygons=True):
         """Create interactive map with optimized routes"""
         if not self.cluster_routes:
@@ -101,7 +52,7 @@ class PotholeRepairOptimizer:
         m = folium.Map(
             location=center,
             zoom_start=12,
-            tiles='Jawg.Dark',
+            tiles='Stadia.AlidadeSmoothDark',
             attr=' '  # This sets the attribution to a single space
         )
         
@@ -200,13 +151,6 @@ if __name__ == "__main__":
     # Step 1: Cluster potholes
     clustered_data = optimizer.cluster_potholes()
     print(f"Found {len(clustered_data['cluster'].unique())} clusters")
-    
-    # Step 2: Optimize routes
-    routes, stats = optimizer.optimize_routes()
-    print("\nRoute Statistics:")
-    for cluster_id, stat in stats.items():
-        print(f"Cluster {cluster_id}: {stat['num_potholes']} potholes, "
-              f"{stat['total_km']}km, {stat['total_time_mins']}mins")
     
     # Step 4: Visualize with polygon toggle
     map.save('pothole_repair_routes.html')
